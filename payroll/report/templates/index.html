@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>The Real Wave Payroll System!</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="https://pbs.twimg.com/profile_images/1146048075686993920/jBDJC8X8.png" type="image/x-icon" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/3.3.0/mdb.min.css" rel="stylesheet" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <link href="https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/bootstrap-table@1.18.3/dist/bootstrap-table.min.js"></script>
+</head>
+
+<body>
+
+    <div class="jumbotron text-center header-bg">
+        <h1 class="title">Welcome to the Wave Payroll System!</h1>
+    </div>
+
+    <div class="container">
+
+        <!-- UPLOAD BUTTON -->
+        <div class="row">
+            <form enctype="multipart/form-data" class="upload-form">
+                <input class="form-control form-control-lg" id="formFileLg" name="file" type="file" />
+                <button type="button" class="btn btn-outline-primary" id="upload-button" data-mdb-ripple-color="dark" value="Upload File">
+                    Upload File
+                </button>  
+            </form>
+        </div>
+
+        <!-- REPORT TABLE -->
+        <div class="row">
+            <table class="table" id="report-table">
+                <thead>
+                    <tr>
+                      <th data-field="employeeId">Employee ID</th>
+                      <th data-field="payPeriod">Pay Period</th>
+                      <th data-field="amountPaid">Amount Paid</th>
+                    </tr>
+                </thead>
+                <tbody id="report-table-body"></tbody>          
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>
+
+<script>
+
+    $(document).ready(function() {
+        // jquery to show filename on selection in file chooser
+        $(".custom-file-input").on("change", function() {
+            let file_name = $(this).val().split("\\").pop();
+            $(this).siblings(".custom-file-label").addClass("selected").html(file_name);
+        });
+
+        update_table();
+
+        // Upload button submits POST request to /upload endpoint with the chosen filename
+        $('#upload-button').on('click', function () {
+            $.ajax({
+                url: 'http://127.0.0.1:8000/upload/',
+                type: 'POST',
+                data: new FormData($('form')[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                // XMLHttpRequest
+                xhr: function () {
+                    let myXhr = $.ajaxSettings.xhr();
+                    return myXhr;
+                },
+                success: function(msg) {
+                    // refresh table on upload!
+                    update_table();
+                },
+                error: function(XMLHttpRequest) {
+                    if(XMLHttpRequest.status == 422) {
+                        alert("ERROR: You already uploaded this file!")
+                    } else {
+                        alert("ERROR: Sorry, this file cannot be uploaded.")
+                    }
+                }
+            });
+        });
+    });
+
+    function update_table() {
+        $("#report-table-body").empty();
+        // GET request to /report to retrieve pay report for everything currently in database
+        $.get("http://127.0.0.1:8000/report/", function(data) {
+            // Populate table with pay periods
+            let json = JSON.parse(data);
+            $.each(json.payrollReport.employeeReports, function(key, value) {
+                let pay = value.payPeriod.startDate + " to " + value.payPeriod.endDate
+                let htm = '<tr><td>' + value.employeeId + '</td><td>' + pay + '</td><td>' + value.amountPaid + '</td><</tr>';
+                $('#report-table > tbody:last-child').append(htm);
+            });
+        });
+    }
+
+</script>
+
+<style>
+    .header-bg {
+        background-image:url("https://kopuwater.com/wp-content/uploads/kopu-sustainability-header.jpg");
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+    }
+
+    .title {
+        color: white;
+        -webkit-text-stroke-width: 1px;
+        -webkit-text-stroke-color: black;
+    }
+
+    #upload-button {
+        margin-top: 0.8rem;
+        font-size: 1rem;
+        height: 3.5rem;
+    }
+
+    #upload-button:hover {
+        background: rgb(180, 228, 255)
+    }
+
+    #report-table{
+        margin: 2.5rem 0;
+    }
+</style>
